@@ -1,0 +1,12 @@
+access to the Content-Type, Last-Modified-Date, metadata, and ACL
+HTTPS
+cerificate auth
+gz transfer encoding
+gz stored encoding
+dont get every item in the bucket on a scan
+client-side caching
+relaxed schema (multiple data columns)
+dont get every column if not needed (HTTP ranged GET)
+secondary keys
+multiple column format other than just UNIREG
+proper autoconf finding of libcurl

@@ -1,0 +1,118 @@
+Hi.
+
+This is the Amazon Web Servies Simple Storage Service Storage Engine for MySQL
+
+Please send comments, suggestions, use cases, bug reports, and bug fixes to
+
+mark+mysql-awss3@fallenpegasus.com
+
+Releases will come as bugs are fixed and features added
+
+There are many "opportunities for improvement".
+
+Don't be surprised if it corrupts your data, crashes your server &
+maxes out your credit card.  I'm not kidding about the last bit,
+remember that S3 storage and transfer costs real money.
+
+You need a MySQL source tree, and you need to have it built.
+Figure out where the source tree is.
+  In my case it's /home/mark/mysql/mysql-5.1-arch
+Figure out where the target install tree is.
+  In my case it's /home/mark/mysql/builds/example
+Figure out where the MySQL build puts storage engine plugins.
+  It's probably in lib/mysql under the install tree
+  Or it's /usr/lib/mysql
+  Or it's /usr/local/lib/mysql
+  For me it's /home/mark/mysql/builds/example/lib/mysql
+Figure out what your libxml2 install prefix is
+  It's probably /usr, especially if you installed it via .rpm
+  It's probably /usr/local, especially if you built it yourself 
+
+Then run
+  ./config/bootstrap
+  ./configure --with-mysql=/path/to/mysql-source \
+              --libdir=/path/to/mysql-plugins \
+              --with-libxml-prefix=/path/to/libxml/prefix
+  make && make install
+
+You can optionally copy the "src" directory here into storage/ in the
+MySQL server source, rebuild MySQL, and things should compile.
+
+Next, you should probably install the S3 command line tools.
+They depend on you having Python.
+Get them at http://www.hanzoarchives.com/development-projects/s3-tools/
+
+If you don't have one yet, you need an Amazon AWS account, and then
+request that they enable S3.  Go to http://amazonaws.com/ to do that.
+You will need to get your "AWS Access Key Identifiers".
+
+Assume they are
+  FV8CY5793BC7CY32YOSN
+  W9oQxQNJizGgjxNc82giE9/ipefQW19tuO2xpC9G
+(I just made those up with a random number generator.)
+
+Put this in your .bashrc file
+AWS_ACCESS_KEY_ID=FV8CY5793BC7CY32YOSN
+AWS_ACCESS_KEY_SECRET=W9oQxQNJizGgjxNc82giE9/ipefQW19tuO2xpC9G
+export AWS_ACCESS_KEY_ID AWS_ACCESS_KEY_SECRET
+
+This isn't used by the storage engine, but it makes using the s3 command
+line tools easier.
+
+Use s3mkbucket to create a bucket.  Remember that buckets are in a
+global namespace, and there are advantages to having them look lik a
+domain name.  I suggest you snap up "s3.example.com", where
+"example.com" is your own domain name.  Grabbing www.example.com and
+example.com is also a good idea.
+
+s3mkbucket s3.example.com
+s3put -k solfege/Do -s "a deer, a female deer" s3.example.com
+s3put -k solfege/Re -s "a drop of golden sun" s3.example.com
+s3put -k solfege/Mi -s "a name I call myself" s3.example.com
+s3put -k solfege/Fa -s "a long long way to run" s3.example.com
+s3put -k solfege/So -s "a needle pulling thread" s3.example.com
+s3put -k solfege/La -s "a note to follow So" s3.example.com
+s3put -k solfege/Ti -s "a drink with jam and bread" s3.example.com
+
+Then at the mysql> prompt
+  install plugin awss3 soname 'libawss3_engine.so';
+  create table s3notes (s3id varchar(255) not null primary key, s3val blob)
+    engine='AWSS3'
+    connection='awss3 s3.example.com FV8CY5793BC7CY32YOSN W9oQxQNJizGgjxNc82giE9/ipefQW19tuO2xpC9G';
+  select * from s3notes where s3id='solfege/Red';
+  insert into s3notes (s3id, s3val) values ('color/Red', 'ff 00 00');
+  select * from s3notes where s3id='color/Red';
+  delete from s3notes where s3id='color/Red';
+
+The table must have a primary key.  The S3 item key is stored in it.
+It's wise to have that field be a varchar(1024).
+
+The first field that isnt the primary key is used to hold the S3 item
+data.  It's wise to make that field a blob or a wide varchar.  I recommend
+blob.
+
+Instead of encoding your AWS id and secret into the connect string,
+which records it in the table's .frm file, you can use the
+
+  create server 'my-aws-acct'
+    foreign data wrapper 'aws'
+    options (user 'FV8CY5793BC7CY32YOSN',
+             password 'W9oQxQNJizGgjxNc82giE9/ipefQW19tuO2xpC9G');
+  create table s3notes
+    (s3id varchar(255) not null primary key,
+     s3val blob)
+    engine=awss3
+    connection='awss3 s3.example.com $server my-aws-acct';
+
+Notice that the foreign data wrapper value is "aws" instead
+of the "mysql" that is used by the MySQL Federated engine.
+
+Also notice "$server" is a literal string.  It tells the connection
+string parser that the next word is the name of the foreign
+server created by the CREATE SERVER command.
+  
+Again, please send comments, suggestions, use cases, bug reports,
+and bug fixes to
+  mark+mysql-awss3@fallenpegasus.com
+
+END
